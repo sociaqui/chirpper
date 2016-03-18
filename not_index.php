@@ -11,14 +11,13 @@ include_once 'Classes/User.php';
 
 $conn = DbConnection::getConnection();
 
-//$user = new User();
+$user = new User();
 //$user->addUser('testlog','testpass',null);
 
 //header('location: adres');
 
 $conn->close();
 $conn=null;
-
 ?>
 
 
