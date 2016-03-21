@@ -1,5 +1,5 @@
 <?php
-include_once 'DbConnection.php';
+require_once 'DbConnection.php';
 /**
  * Created by PhpStorm.
  * User: admin
@@ -11,7 +11,7 @@ class User
     private $id;
     public $email;
     public $username;
-    private $password;
+    // private $password;
     private $salt;
 
     public function __construct(){
@@ -28,17 +28,17 @@ class User
     }
 
     public function addUser ($email, $password, $username = null){
-        if (empty ($email) ||empty ($password)){
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL) || empty ($password)){
             return false;
         }
         $this->generateSalt();
         $hashedPassword = $this->hashPassword($password);
         $conn = DbConnection::getConnection();
-        $insertUserQuery = 'INSERT INTO users (email, password, username, salt)
-                            VALUES ("'.$email.'","'.$hashedPassword.'","'.$username.'","'.$this->salt.'");';
+        $insertUserQuery = 'INSERT INTO users (email, password, username, salt, creationDate)
+                            VALUES ("'.$email.'","'.$hashedPassword.'","'.$username.'","'.$this->salt.'","'.date("Y-m-d H:i:s").'");';
         $result=$conn->query($insertUserQuery);
         if (!$result && $conn->errno == 1062){
-            return 'Email already exists!';
+            return 'Email already in use on this site!';
         }
         $conn->close();
         return $result;
@@ -63,19 +63,23 @@ class User
             return false;
         }
         $conn = DbConnection::getConnection();
-        $getUserQuery = 'SELECT * FROM users WHERE email="'.$email.'";';
+        $getUserQuery = 'SELECT * FROM users WHERE email="'.$email.'" AND deleted=0;';
         $result = $conn->query($getUserQuery);
         if ($result->num_rows == 0){
             return false;
         }
-        $user = $result->fetch_assoc();
-        $this->salt = $user['salt'];
+        $tempUser = $result->fetch_assoc();
+        $this->salt = $tempUser['salt'];
         $hashedPassword = $this->hashPassword($password);
-        if ($hashedPassword != $user['password']){
+        if ($hashedPassword != $tempUser['password']){
             return false;
         }
-        unset($user['password']);
-        $_SESSION['user'] = $user;
+        unset($tempUser['password']);
+        unset($tempUser['salt']);
+        $_SESSION['user'] = $tempUser;
+        unset($tempUser);
+        $conn->close();
+        $conn=null;
         return true;
     }
 
@@ -84,14 +88,20 @@ class User
     }
 
     public function updateUser ($email, $username = null){
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL) ) {
+            return false;
+        }
+
         $conn = DbConnection::getConnection();
+
         $updateUserQuery = 'UPDATE users
-                            SET email="'.$email.'"
+                            SET email="'.$email.'",
                                 username="'.$username.'"
                             WHERE id= '.$this->id.'
         ;';
         $result = $conn->query($updateUserQuery);
         $conn->close();
+        $conn=null;
         return $result;
     }
 
@@ -122,19 +132,19 @@ class User
     }
 
     public function deleteUser(){
-
+        // TODO
     }
 
     public function getAllPosts(){
-
+        // TODO
     }
 
     public function getAllMessages(){
-
+        // TODO
     }
 
     public function getAllFriends(){
-
+        // TODO
     }
 
 }
