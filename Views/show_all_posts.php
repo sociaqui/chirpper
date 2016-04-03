@@ -3,7 +3,11 @@
 require_once("../src/includes.php");
 
 $user = new User();
-$user->loadFromDb($conn, $_SESSION['userId']);
+if ($_SERVER['REQUEST_METHOD'] == 'GET') {
+    $user->loadFromDb($conn, $_GET['userId']);
+}else{
+    $user->loadFromDb($conn, $_SESSION['userId']);
+}
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $newPost = new Post();
@@ -25,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <body>
 
 <?php
-if (1 == 1) {
+if ($user->getId() == $_SESSION['userId']) {
     echo('
     <div class="well" style="width: 750px; margin: 0 auto; margin-top: 20px;">
         <form class="form-horizontal" method="POST">

@@ -18,11 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $message = 'Please double-check the entered email!';
     } else {
         if (User::Login($conn, $email, $password) === true) {
-            // TODO what next?
-            $message = 'O.K. here`s a <a href="../test/test.php">test</a>';
-            $msgtype = 'success';
-            // TODO what next?
-            //header("Location: index.php");
+            header("Location: ../index.php");
         } else {
             $message = 'Login failed! Please try again.';
         }

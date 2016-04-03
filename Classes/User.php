@@ -156,9 +156,9 @@ class User
         }
     }
 
-    public function updateUserPassword(mysqli $conn, $oldPassword, $newPassword, $confirmNewPassword)
+    public function updateUserPassword(mysqli $conn, $oldPassword, $newPassword)
     {
-        $getUserQuery = "SELECT * FROM users WHERE id={$_SESSION['userId']};";
+        $getUserQuery = "SELECT * FROM users WHERE id={$this->getId()};";
         $result = $conn->query($getUserQuery);
         if ($result->num_rows == 0) {
             return false;
@@ -169,14 +169,11 @@ class User
         if (!password_verify($oldPassword, $hash)) {
             return 'Old password incorrect';
         }
-        if ($newPassword != $confirmNewPassword) {
-            return "New password and it's confirmation do not match";
-        }
         $this->generateSalt();
         $hashedNewPassword = $this->hashPassword($newPassword);
         $updateUserQuery = "UPDATE users
                             SET password='{$hashedNewPassword}'
-                            WHERE id={$_SESSION['userId']}
+                            WHERE id={$this->getId()}
                             ;";
         $result = $conn->query($updateUserQuery);
         return $result;
