@@ -1,6 +1,4 @@
 <?php
-require_once 'DbConnection.php';
-
 /**
  * Created by PhpStorm.
  * User: admin
@@ -10,124 +8,57 @@ require_once 'DbConnection.php';
 class Post
 {
 
+    // Funkcje repozytorium
+    static public function GetAllUserPosts(mysqli $conn, $userId)
+    {
+        $allPosts = [];
+
+        $sql = "SELECT * FROM posts WHERE user_id={$userId} ORDER BY modificationDate DESC";
+
+        $result = $conn->query($sql);
+        if ($result != FALSE) {
+            if ($result->num_rows > 0) {
+                while ($row = $result->fetch_assoc()) {
+                    $post = new Post();
+                    $post->postId = $row["id"];
+                    $post->setAuthorId($row["user_id"]);
+                    $post->setPostText($row["content"]);
+                    $post->setDate($row["modificationDate"]);
+                    $allPosts[] = $post;
+                }
+            }
+        }
+
+        return $allPosts;
+    }
+    // Koniec funkcji repozytorium
+
     private $postId;
     private $authorId;
     private $postText;
-    private $isDeleted;
+    private $date;
 
     public function __construct()
     {
         $this->postId = -1;
-        $this->authorId = 0;
-        $this->postText = '';
-        $this->isDeleted = 0;
-    }
-
-    public function loadFromDb($id)
-    {
-        $conn = DbConnection::getConnection();
-        $sqlGetPost = 'SELECT * FROM posts WHERE deleted=0 AND id=' . $id;
-        $result = $conn->query($sqlGetPost);
-        if ($result->num_rows != 1) {
-            return false;
-        } else {
-            $tempPost = $result->fetch_assoc();
-            $this->postId = $tempPost['id'];
-            $this->setAuthorId($tempPost['user_id']);
-            $this->setPostText($tempPost['content']);
-            $this->setIsDeleted(0);
-        }
-        $conn->close();
-        $conn = null;
-        return true;
-    }
-
-    public function addToDb()
-    {
-        if (!$this->checkAuthor() || !(strlen($this->postText) > 0)) {
-            return false;
-        }
-        $conn = DbConnection::getConnection();
-        $addPostSql = 'INSERT INTO posts (user_id, content, creationDate)
-                          VALUES ("' . $this->authorId . '", "' . $this->postText . '","' . date("Y-m-d H:i:s") . '")';
-        $result = $conn->query($addPostSql);
-        $conn->close();
-        $conn = null;
-        return $result;
-    }
-
-    public function updatePost()
-    {
-        if (!$this->checkAuthor() || !(strlen($this->postText) > 0)) {
-            return false;
-        }
-        if (!isset($_SESSION['user']) || $_SESSION['user']['id'] != $this->authorId) {
-            return false;
-        }
-        $conn = DbConnection::getConnection();
-        $updatePostSql = 'UPDATE posts SET content="' . $this->postText . '"
-                            WHERE id=' . $this->getPostId();
-        $result = $conn->query($updatePostSql);
-        $conn->close();
-        $conn = null;
-        return $result;
-    }
-
-    /* TODO
-    public function showTweet() {
-        if (!isset($_SESSION)) {
-            return false;
-        }
-        $editLink = '';
-        $deleteLink = '';
-        if ($this->authorId == $_SESSION['user']->getId()) {
-            $editLink = '<a class="btn btn-xs btn-primary" href="index.php?editTweet='.$this->getTweetId().'">Edytuj</a>';
-            $deleteLink = '<a class="btn btn-xs btn-primary" href="index.php?deleteTweet='.$this->getTweetId().'">Usuń</a>';
-        }
-        $tweetDate = $this->getCreateDate();
-        echo '<div class="panel panel-primary">';
-        echo '<div class="panel-heading">Tweet z '.substr($tweetDate,0,strlen($tweetDate)-3).' '.$editLink.' '.$deleteLink.'</div>';
-        echo '<div class="panel-body">'.$this->tweetText.'</div>';
-        echo '</div>';
-    }
-    */
-
-    /* TODO
-    public function deleteTweet() {
-        if (!isset($_SESSION['user']) || $_SESSION['user']->getId() != $this->authorId) {
-            return false;
-        }
-        $dbConnection = DbConnection::getConnection();
-        $updateTweetSql = 'UPDATE tweets SET deleted=1,
-                            updated="'.date('Y-m-d').'" WHERE id='.$this->getTweetId();
-        $result = $dbConnection->query($updateTweetSql);
-        $dbConnection->close();
-        $dbConnection=null;
-        return $result;
-    }
-    */
-
-    private function checkAuthor()
-    {
-        $conn = DbConnection::getConnection();
-        $getUserQuery = 'SELECT * FROM users WHERE id="' . $this->authorId . '";';
-        $result = $conn->query($getUserQuery);
-        if ($result->num_rows != 1) {
-            return false;
-        }
-        $conn->close();
-        $conn = null;
-        return true;
-    }
-
-    public function getAllComments()
-    {
-        //TODO
+        $this->authorId = -1;
+        $this->postText = "";
+        $this->date = "";
     }
 
     public function getPostId()
     {
         return $this->postId;
+    }
+
+    public function getDate()
+    {
+        return $this->date;
+    }
+
+    public function setDate($date)
+    {
+        $this->date = $date;
     }
 
     public function getAuthorId()
@@ -137,13 +68,7 @@ class Post
 
     public function setAuthorId($authorId)
     {
-        $temp = $this->authorId;
         $this->authorId = $authorId;
-        if (!$this->checkAuthor()) {
-            $this->authorId = $temp;
-            return false;
-        }
-        return true;
     }
 
     public function getPostText()
@@ -153,20 +78,73 @@ class Post
 
     public function setPostText($postText)
     {
-        if (strlen($postText) > 0) {
-            $this->postText = $postText;
+        $this->postText = $postText;
+    }
+
+    public function savePost(mysqli $conn)
+    {
+        if ($this->postId === -1) {
+            $this->date = date('Y-m-d H:i:s');
+            $insertsql = "INSERT INTO posts (user_id, content, creationDate)
+                                VALUES ('{$this->getAuthorId()}',
+                                        '{$this->getPostText()}',
+                                        '{$this->date}')
+                                ";
+            $result = $conn->query($insertsql);
+            if ($result === TRUE) {
+                $this->id = $conn->insert_id;
+                return $result;
+            }
+            return $result;
+        }else{
+            $updateUserQuery = "UPDATE users
+                                SET email='{$this->getEmail()}',
+                                    username='{$this->getUsername()}'
+                                WHERE id={$this->getId()}
+                                ";
+            $result = $conn->query($updateUserQuery);
+            return $result;
         }
     }
 
-    public function getIsDeleted()
+    public function loadPost(mysqli $conn, $id)
     {
-        return $this->isDeleted;
+
+        $sql = "SELECT * FROM posts WHERE id={$id}";
+        $result = $conn->query($sql);
+        if ($result != FALSE) {
+            if($result->num_rows === 1){
+                $row = $result->fetch_assoc();
+                $this->postId = $row["id"];
+                $this->setAuthorId($row["user_id"]);
+                $this->setPostText($row["content"]);
+                $this->setDate($row["modificationDate"]);
+                return true;
+            }
+        }
+        return false;
     }
 
-    public function setIsDeleted($isDeleted)
+    //TODO
+    public function deletePost(mysqli $conn)
     {
-        if (is_bool($isDeleted)) {
-            $this->isDeleted = $isDeleted;
+        if ($this->id != -1) {
+            $sql = "DELETE FROM users WHERE id={$this->id}";
+            $result = $conn->query($sql);
+            if ($result != FALSE) {
+                $this->id = -1;
+                $this->name = "";
+                $this->surname = "";
+                $this->dateOfBirth = "";
+                return true;
+            }
         }
+        return false;
     }
+
+    public function getAllComments()
+    {
+        // TODO as first priority
+    }
+
 }
