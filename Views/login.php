@@ -1,11 +1,13 @@
 <?php
-require_once '../Classes/User.php';
 /**
  * Created by PhpStorm.
  * User: admin
  * Date: 2016-03-18
  * Time: 14:47
  */
+
+require_once ("../src/includes.php");
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $email = $_POST['email'];
     $password = $_POST['password'];
@@ -15,11 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     } else if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $message = 'Please double-check the entered email!';
     } else {
-        $tempUser = new User();
-        $userLoginInfo = $tempUser->login($email, $password);
-        if ($userLoginInfo === true) {
-            unset($tempUser);
-            unset($userLoginInfo);
+        if (User::Login($conn, $email, $password) === true) {
             // TODO what next?
             $message = 'O.K. here`s a <a href="../test/test.php">test</a>';
             $msgtype = 'success';
@@ -48,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <form class="form-horizontal" method="POST">
         <div class="form-group ">
             <div class="col-sm-offset-5 col-sm-7">
-                <strong>Login</strong> <!-- TODO properly align stuff (read on bootstrap CSS classes for labels) -->
+                <strong>Login</strong> <!-- TODO properly align stuff (read on bootstrap CSS classes for columns and offsets) -->
             </div>
         </div>
         <?php if (isset($message)) {

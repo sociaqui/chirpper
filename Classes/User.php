@@ -1,5 +1,5 @@
 <?php
-require_once 'DbConnection.php';
+
 /**
  * Created by PhpStorm.
  * User: admin
@@ -8,43 +8,109 @@ require_once 'DbConnection.php';
  */
 class User
 {
-    private $id;
-    public $email;
-    public $username;
-    // private $password;
-    private $salt;
 
-    public function __construct(){
-        if(session_status() != PHP_SESSION_ACTIVE){
-            session_start();
+    // Funkcje repozytorium
+    static public function GetAllUsers(mysqli $conn)
+    {
+        $allUsers = [];
+
+        $sql = "SELECT * FROM users";
+
+        $result = $conn->query($sql);
+        if ($result != FALSE) {
+            if ($result->num_rows > 0) {
+                while ($row = $result->fetch_assoc()) {
+                    $user = new User();
+                    $user->id = $row["id"];
+                    $user->setEmail($row["email"]);
+                    $user->setUsername($row["username"]);
+                    $allUsers[] = $user;
+                }
+            }
         }
-        if(!empty($_SESSION['user'])){
-            $user=$_SESSION['user'];
-            $this->id=$user['id'];
-            $this->email=$user['email'];
-            $this->username=$user['username'];
-            $this->salt=$user['salt'];
-        }
+
+        return $allUsers;
     }
 
-    public function addUser ($email, $password, $username = null){
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL) || empty ($password)){
+    static public function Login(mysqli $conn, $email, $password)
+    {
+        if (empty ($email) || empty ($password)) {
             return false;
         }
-        $this->generateSalt();
-        $hashedPassword = $this->hashPassword($password);
-        $conn = DbConnection::getConnection();
-        $insertUserQuery = 'INSERT INTO users (email, password, username, salt, creationDate)
-                            VALUES ("'.$email.'","'.$hashedPassword.'","'.$username.'","'.$this->salt.'","'.date("Y-m-d H:i:s").'");';
-        $result=$conn->query($insertUserQuery);
-        if (!$result && $conn->errno == 1062){
-            return 'Email already in use on this site!';
+        $getUserQuery = "SELECT * FROM users WHERE email='{$email}' AND deleted=0;";
+        $result = $conn->query($getUserQuery);
+        if ($result->num_rows == 0) {
+            return false;
         }
-        $conn->close();
-        return $result;
+
+        $row = $result->fetch_assoc();
+        $hash = $row['password'];
+        if (!password_verify($password, $hash)) {
+            return false;
+        } else {
+            $_SESSION['userId'] = $row['id'];
+        }
+        return true;
     }
 
-    private function hashPassword($password){
+    static public function Logout()
+    {
+        unset($_SESSION['userId']);
+    }
+
+    // Koniec funkcji repozytorium
+
+    private $id;
+    private $email;
+    private $username;
+    private $password;
+    private $salt;
+
+    public function __construct()
+    {
+        $this->id = -1;
+        $this->email = "";
+        $this->username = "";
+        $this->salt = "";
+    }
+
+    public function getId()
+    {
+        return $this->id;
+    }
+
+    public function getPassword()
+    {
+        return $this->password;
+    }
+
+    public function setPassword($password)
+    {
+        $this->password = $password;
+    }
+
+    public function getEmail()
+    {
+        return $this->email;
+    }
+
+    public function setEmail($email)
+    {
+        $this->email = $email;
+    }
+
+    public function getUsername()
+    {
+        return $this->username;
+    }
+
+    public function setUsername($username)
+    {
+        $this->username = $username;
+    }
+
+    private function hashPassword($password)
+    {
         $options = [
             'cost' => 11,
             'salt' => $this->salt
@@ -53,98 +119,116 @@ class User
         return $hashedPas;
     }
 
-    private function generateSalt(){
+    private function generateSalt()
+    {
         $this->salt = mcrypt_create_iv(22, MCRYPT_DEV_URANDOM);
     }
 
-    public function login ($email, $password)
+    public function saveToDb(mysqli $conn)
     {
-        if (empty ($email) || empty ($password)) {
-            return false;
+        if ($this->id === -1) {
+            $this->generateSalt();
+            $hashedPassword = $this->hashPassword($this->password);
+            $date = date('Y-m-d H:i:s');
+            $insertUserQuery = "INSERT INTO users (email, password, username, creationDate)
+                                VALUES ('{$this->getEmail()}',
+                                        '{$hashedPassword}',
+                                        '{$this->getUsername()}',
+                                        '{$date}')
+                                ";
+            $result = $conn->query($insertUserQuery);
+            if (!$result && $conn->errno == 1062) {
+                return 'Email already in use on this site!';
+            }
+            if ($result === TRUE) {
+                $this->id = $conn->insert_id;
+                return $result;
+            }
+            return $result;
+        }else{
+            $updateUserQuery = "UPDATE users
+                                SET email='{$this->getEmail()}',
+                                    username='{$this->getUsername()}'
+                                WHERE id={$this->getId()}
+                                ";
+            $result = $conn->query($updateUserQuery);
+            return $result;
         }
-        $conn = DbConnection::getConnection();
-        $getUserQuery = 'SELECT * FROM users WHERE email="'.$email.'" AND deleted=0;';
+    }
+
+    public function updateUserPassword(mysqli $conn, $oldPassword, $newPassword, $confirmNewPassword)
+    {
+        $getUserQuery = "SELECT * FROM users WHERE id={$_SESSION['userId']};";
         $result = $conn->query($getUserQuery);
-        if ($result->num_rows == 0){
-            return false;
-        }
-        $tempUser = $result->fetch_assoc();
-        $this->salt = $tempUser['salt'];
-        $hashedPassword = $this->hashPassword($password);
-        if ($hashedPassword != $tempUser['password']){
-            return false;
-        }
-        unset($tempUser['password']);
-        unset($tempUser['salt']);
-        $_SESSION['user'] = $tempUser;
-        unset($tempUser);
-        $conn->close();
-        $conn=null;
-        return true;
-    }
-
-    public function logout(){
-        unset($_SESSION['user']);
-    }
-
-    public function updateUser ($email, $username = null){
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL) ) {
+        if ($result->num_rows == 0) {
             return false;
         }
 
-        $conn = DbConnection::getConnection();
-
-        $updateUserQuery = 'UPDATE users
-                            SET email="'.$email.'",
-                                username="'.$username.'"
-                            WHERE id= '.$this->id.'
-        ;';
-        $result = $conn->query($updateUserQuery);
-        $conn->close();
-        $conn=null;
-        return $result;
-    }
-
-    public function updateUserPassword($oldPassword, $newPassword, $confirmNewPassword){
-        $conn = DbConnection::getConnection();
-        $getUserQuery = 'SELECT * FROM users WHERE id="'.$this->id.'";';
-        $result = $conn->query($getUserQuery);
-        if ($result->num_rows == 0){
-            return false;
-        }
-        $user = $result->fetch_assoc();
-        $this->salt = $user['salt'];
-        $hashedOldPassword = $this->hashPassword($oldPassword);
-        if ($hashedOldPassword != $user['password']){
+        $row = $result->fetch_assoc();
+        $hash = $row['password'];
+        if (!password_verify($oldPassword, $hash)) {
             return 'Old password incorrect';
         }
-        if ($newPassword != $confirmNewPassword){
+        if ($newPassword != $confirmNewPassword) {
             return "New password and it's confirmation do not match";
         }
+        $this->generateSalt();
         $hashedNewPassword = $this->hashPassword($newPassword);
-        $updateUserQuery = 'UPDATE users
-                            SET password="'.$hashedNewPassword.'"
-                            WHERE id="'.$this->id.'"
-                            ;';
-        $result=$conn->query($updateUserQuery);
-        $conn->close();
+        $updateUserQuery = "UPDATE users
+                            SET password='{$hashedNewPassword}'
+                            WHERE id={$_SESSION['userId']}
+                            ;";
+        $result = $conn->query($updateUserQuery);
         return $result;
     }
 
-    public function deleteUser(){
-        // TODO
+    public function loadFromDb(mysqli $conn, $id)
+    {
+
+        $sql = "SELECT * FROM users WHERE id={$id}";
+        $result = $conn->query($sql);
+        if ($result != FALSE) {
+            if($result->num_rows === 1){
+                $row = $result->fetch_assoc();
+                $this->id = $row['id'];
+                $this->setUsername($row['username']);
+                $this->setEmail($row['email']);
+                return true;
+            }
+        }
+        return false;
     }
 
-    public function getAllPosts(){
-        // TODO
+    public function deleteUser(mysqli $conn)
+    {
+        if ($this->id != -1) {
+            $sql = "DELETE FROM users WHERE id={$this->id}";
+            $result = $conn->query($sql);
+            if ($result != FALSE) {
+                $this->id = -1;
+                $this->name = "";
+                $this->surname = "";
+                $this->dateOfBirth = "";
+                return true;
+            }
+        }
+        return false;
     }
 
-    public function getAllMessages(){
-        // TODO
+    public function getAllMyPosts(mysqli $conn){
+        $myPosts = Post::GetAllUserPosts($conn, $this->getId());
+
+        return $myPosts;
     }
 
-    public function getAllFriends(){
-        // TODO
+    public function getAllMessages()
+    {
+        // TODO soon
+    }
+
+    public function getAllFriends()
+    {
+        // TODO... someday... maybe...
     }
 
 }

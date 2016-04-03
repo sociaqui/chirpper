@@ -1,11 +1,13 @@
 <?php
-require_once '../Classes/User.php';
 /**
  * Created by PhpStorm.
  * User: admin
  * Date: 2016-03-18
  * Time: 14:47
  */
+
+require_once ("../src/includes.php");
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $email = $_POST['email'];
     $username = $_POST['username'];
@@ -14,11 +16,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $msgtype = 'danger';
     if (empty($email) || empty($password) || empty($confirmPassword)) {
         $message = 'Please fill all the mandatory fields!';
+    } else if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $message = 'Please';
     } else if ($password != $confirmPassword) {
         $message = 'Passwords do not match!';
     } else {
-        $userObject = new User();
-        $userAdd = $userObject->addUser($email, $password, $username);
+        $newUser = new User();
+        $newUser->setEmail($email);
+        $newUser->setUsername($username);
+        $newUser->setPassword($password);
+        $userAdd = $newUser->saveToDb($conn);
+
         if ($userAdd === true) {
             $message = 'User added. You can now login at <a href ="login.php">Login</a>';
             $msgtype = 'success';

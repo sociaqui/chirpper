@@ -8,17 +8,24 @@
  */
 class DbConnection
 {
-    private static $servername = "localhost";
-    private static $username = "chirpadmin";
-    private static $password = "whatever";
-    private static $baseName = "chirpper";
+    static private $servername = "localhost";
+    static private $username = "chirpadmin";
+    static private $password = "whatever";
+    static private $baseName = "chirpper";
 
-    public static function getConnection(){
+    static public function GetConnection()
+    {
         $conn = new mysqli(self::$servername, self::$username, self::$password, self::$baseName);
 
-        if ($conn->connect_error) {
-            return false;
+        if ($conn->connect_errno != 0) {
+            die($conn->connect_errno);
+        } else {
+            return $conn;
         }
-        return $conn;
+    }
+
+    private function __construct()
+    {
+
     }
 }
