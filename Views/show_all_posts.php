@@ -3,12 +3,11 @@
 require_once("../src/includes.php");
 
 $user = new User();
-if ($_SERVER['REQUEST_METHOD'] == 'GET') {
+if (isset($_GET['userId'])) {
     $user->loadFromDb($conn, $_GET['userId']);
 }else{
     $user->loadFromDb($conn, $_SESSION['userId']);
 }
-
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $newPost = new Post();
     $newPost->setPostText($_POST['content']);
@@ -27,6 +26,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
 </head>
 <body>
+
+<a class="btn btn-info btn-xs" href="../">Back</a>
 
 <?php
 if ($user->getId() == $_SESSION['userId']) {
@@ -66,10 +67,10 @@ if ($user->getId() == $_SESSION['userId']) {
             echo("<li>
                   <p>{$post->getDate()} {$user->getUsername()} chirpped:</p>
                   <p>{$post->getPostText()}</p>
-                  <p><a href='show_post.php?postId={$post->getPostId()}'>See comments</a>
+                  <p><a href='show_post.php?postId={$post->getPostId()}'>See comments</a> / 
                   <a href='add_comment.php?postId={$post->getPostId()}'>Comment on this chirp</a>   ");
                   if ($user->getId() == $_SESSION['userId']) {
-                        echo("<a href='delete_post.php?postId={$post->getPostId()}'>DELETE</a>");
+                        echo(" / <a href='delete_post.php?postId={$post->getPostId()}'>DELETE</a>");
                   }
             echo("</p></li>");
         }

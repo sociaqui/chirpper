@@ -32,6 +32,7 @@ if(!isset ($_SESSION['userId'])){
         <li><a href="./Views/modify_user.php">Change your personal info</a></li>
         <li><a href="./Views/modify_password.php">Change your password</a></li>
         <li><a href="./Views/logout.php">LOGOUT</a></li>
+        <li><a href="./Views/delete_user.php">DELETE ACCOUNT</a></li>
     </ul>
 </body>
 </html>

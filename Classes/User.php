@@ -202,10 +202,7 @@ class User
             $sql = "DELETE FROM users WHERE id={$this->id}";
             $result = $conn->query($sql);
             if ($result != FALSE) {
-                $this->id = -1;
-                $this->name = "";
-                $this->surname = "";
-                $this->dateOfBirth = "";
+                self::Logout();
                 return true;
             }
         }
