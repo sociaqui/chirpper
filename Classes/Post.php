@@ -125,17 +125,16 @@ class Post
         return false;
     }
 
-    //TODO
     public function deletePost(mysqli $conn)
     {
-        if ($this->id != -1) {
-            $sql = "DELETE FROM users WHERE id={$this->id}";
+        if ($this->postId != -1) {
+            $sql = "DELETE FROM posts WHERE id={$this->postId}";
             $result = $conn->query($sql);
             if ($result != FALSE) {
-                $this->id = -1;
-                $this->name = "";
-                $this->surname = "";
-                $this->dateOfBirth = "";
+                $this->postId = -1;
+                $this->authorId = -1;
+                $this->postText = "";
+                $this->date = "";
                 return true;
             }
         }

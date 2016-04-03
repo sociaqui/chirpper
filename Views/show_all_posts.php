@@ -67,7 +67,7 @@ if ($user->getId() == $_SESSION['userId']) {
             echo("<li>
                   <p>{$post->getDate()} {$user->getUsername()} chirpped:</p>
                   <p>{$post->getPostText()}</p>
-                  <p><a href='show_post.php?postId={$post->getPostId()}'>See comments</a> / 
+                  <p><a href='show_post.php?postId={$post->getPostId()}&userId={$user->getId()}'>See comments</a> /
                   <a href='add_comment.php?postId={$post->getPostId()}'>Comment on this chirp</a>   ");
                   if ($user->getId() == $_SESSION['userId']) {
                         echo(" / <a href='delete_post.php?postId={$post->getPostId()}'>DELETE</a>");
